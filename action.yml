@@ -1,0 +1,109 @@
+name: test-wordpress-plugin
+description: Test a WordPress plugin
+inputs:
+  wordpress_version:
+    description: WordPress version
+    required: false
+    default: latest
+  php_version:
+    description: PHP version
+    required: false
+    default: '8.2'
+  php_extensions:
+    description: PHP version
+    required: false
+    default: imagick
+  plugin_dir:
+    description: Path to the WordPress plugin
+    required: false
+    default: '.'
+  plugin_slug:
+    description: Plugin slug
+    required: true
+  phpunit_config:
+    description: PHPUnit configuration file
+    required: false
+    default: 'phpunit.xml'
+outputs:
+  junit_report:
+    description: Path to the JUnit report
+    value: ${{ runner.temp }}/junit-result.xml
+runs:
+  using: composite
+  steps:
+    - name: Install WordPress
+      id: wordpress
+      uses: natbienetre/install-wordpress-github-action@v1
+
+    - name: Install the plugin
+      id: plugin_install
+      shell: bash
+      run: |-
+        cp -R \
+          "$(pwd)"'/${{ inputs.plugin_dir }}' \
+          "$PLUGINS_PATH"'/${{ inputs.plugin_slug }}'
+        echo 'path='"$PLUGINS_PATH"'/${{ inputs.plugin_slug }}' \
+          >> "$GITHUB_OUTPUT"
+      env:
+        PLUGINS_PATH: ${{ steps.wordpress.outputs.plugins_path }}
+
+    - name: Scaffold the test suite
+      shell: bash
+      run: >-
+        wp scaffold plugin-tests \
+          --path='${{ steps.wordpress.outputs.path }}' \
+          --force \
+          '${{ inputs.plugin_slug }}'
+
+    - name: Install the tests
+      working-directory: ${{ steps.plugin_install.outputs.path }}
+      shell: bash
+      run: >-
+        ./bin/install-wp-tests.sh \
+          '${{ steps.wordpress.outputs.db_name }}' \
+          '${{ steps.wordpress.outputs.db_user }}' \
+          '${{ steps.wordpress.outputs.db_pass }}' \
+          '${{ steps.wordpress.outputs.db_host }}' \
+          latest true
+      env:
+        WP_CORE_DIR: ${{ steps.wordpress.outputs.path }}
+        SKIP_DB_CREATE: 'true'
+        # WP_TESTS_DIR: ${{ steps.wordpress.outputs.tests_dir }}
+
+    - name: Cache Composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: /tmp/composer-cache
+        key: >-
+          ${{ runner.os }}-${{
+            hashFiles( format( '{0}/composer.lock', inputs.plugin_dir ) )
+          }}
+
+    - name: Install dependencies
+      working-directory: ${{ steps.plugin_install.outputs.path }}
+      shell: bash
+      run: |-
+        composer install \
+          --prefer-dist \
+          --no-interaction \
+          --no-progress \
+          --no-suggest
+        echo "$(pwd)/$(composer config bin-dir)" >> "$GITHUB_PATH"
+
+    - name: Install PHPUnit
+      working-directory: ${{ steps.plugin_install.outputs.path }}
+      shell: bash
+      run: >-
+        which phpunit \
+          || composer global require phpunit/phpunit:^9 \
+            --prefer-dist \
+            --no-interaction \
+            --no-progress
+
+    - name: Run the tests
+      working-directory: ${{ steps.plugin_install.outputs.path }}
+      shell: bash
+      run: >-
+        phpunit \
+          --configuration='${{ inputs.phpunit_config }}' \
+          --log-junit='${{ runner.temp }}/junit-result.xml'
