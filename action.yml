@@ -33,7 +33,7 @@ runs:
   steps:
     - name: Install WordPress
       id: wordpress
-      uses: natbienetre/install-wordpress-github-action@v1
+      uses: holyhope/install-wordpress-github-action@v1.0.0
 
     - name: Install the plugin
       id: plugin_install
