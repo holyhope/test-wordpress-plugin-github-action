@@ -14,20 +14,38 @@ inputs:
     required: false
     default: '8.2'
   php_extensions:
-    description: PHP version
+    description: |-
+      PHP extensions to install.
+      Each extension should be on a new line.
     required: false
-    default: imagick
+    default: |-
+      imagick
   plugin_dir:
     description: Path to the WordPress plugin
     required: false
     default: '.'
   plugin_slug:
-    description: Plugin slug
+    description: Slug of the WordPress plugin
     required: true
+  phpunit_version:
+    description: |-
+      PHPUnit version to install.
+
+      Set to `false` to use the system-wide PHPUnit binary.
+
+      Default: Install the version found in `composer.json` file
+      or `^9` if not found.
+    required: false
+    default: '^9'
   phpunit_config:
     description: PHPUnit configuration file
     required: false
     default: 'phpunit.xml'
+  scaffold_tests:
+    description: Generates files needed for running PHPUnit tests in a plugin.
+    required: false
+    default: true
+
 outputs:
   junit_report:
     description: Path to the JUnit report
@@ -37,24 +55,33 @@ runs:
   steps:
     - name: Install WordPress
       id: wordpress
-      uses: holyhope/install-wordpress-github-action@v1.0.0
+      uses: holyhope/install-wordpress-github-action@main
+      with:
+        wordpress_version: ${{ inputs.wordpress_version }}
+        php_version: ${{ inputs.php_version }}
+        php_extensions: ${{ inputs.php_extensions }}
 
     - name: Install the plugin
       id: plugin_install
       shell: bash
       run: |-
         cp -R \
-          "$(pwd)"'/${{ inputs.plugin_dir }}' \
-          "$PLUGINS_PATH"'/${{ inputs.plugin_slug }}'
-        echo 'path='"$PLUGINS_PATH"'/${{ inputs.plugin_slug }}' \
-          >> "$GITHUB_OUTPUT"
-      env:
-        PLUGINS_PATH: ${{ steps.wordpress.outputs.plugins_path }}
+          '${{ inputs.plugin_dir }}' \
+          '${{ format( '{0}/{1}',
+            steps.wordpress.outputs.plugins_path,
+            inputs.plugin_slug ) }}'
+
+        cat <<EOF >> "$GITHUB_OUTPUT"
+        path=${{ format( '{0}/{1}',
+            steps.wordpress.outputs.plugins_path,
+            inputs.plugin_slug ) }}
+        EOF
 
     - name: Scaffold the test suite
       shell: bash
+      if: ${{ inputs.scaffold_tests }}
       run: >-
-        wp scaffold plugin-tests \
+        '${{ steps.wordpress.outputs.wp_cli }}' scaffold plugin-tests \
           --path='${{ steps.wordpress.outputs.path }}' \
           --force \
           '${{ inputs.plugin_slug }}'
@@ -62,19 +89,24 @@ runs:
     - name: Install the tests
       working-directory: ${{ steps.plugin_install.outputs.path }}
       shell: bash
-      run: >-
+      run: |-
+        echo '::group::Install WordPress tests'
+
         ./bin/install-wp-tests.sh \
           '${{ steps.wordpress.outputs.db_name }}' \
           '${{ steps.wordpress.outputs.db_user }}' \
           '${{ steps.wordpress.outputs.db_pass }}' \
           '${{ steps.wordpress.outputs.db_host }}' \
           latest true
+
+        echo '::endgroup::'
       env:
         WP_CORE_DIR: ${{ steps.wordpress.outputs.path }}
         SKIP_DB_CREATE: 'true'
         # WP_TESTS_DIR: ${{ steps.wordpress.outputs.tests_dir }}
 
     - name: Cache Composer dependencies
+      if: ${{ hashFiles( format( '{0}/composer.lock', inputs.plugin_dir ) ) }}
       uses: actions/cache@v3
       with:
         path: /tmp/composer-cache
@@ -84,22 +116,31 @@ runs:
           }}
 
     - name: Install dependencies
+      if: ${{ hashFiles( format( '{0}/composer.json', inputs.plugin_dir ) ) }}
       working-directory: ${{ steps.plugin_install.outputs.path }}
       shell: bash
       run: |-
+        echo '::group::Install dependencies'
+
         composer install \
+          --dev \
           --prefer-dist \
           --no-interaction \
           --no-progress \
           --no-suggest
+
+        echo '::endgroup::'
+
         echo "$(pwd)/$(composer config bin-dir)" >> "$GITHUB_PATH"
 
     - name: Install PHPUnit
+      if: ${{ inputs.phpunit_version }}
       working-directory: ${{ steps.plugin_install.outputs.path }}
       shell: bash
       run: >-
-        which phpunit \
-          || composer global require phpunit/phpunit:^9 \
+        composer exec -- phpunit --version \
+          || composer global require \
+            'phpunit/phpunit:${{ inputs.phpunit_version }}' \
             --prefer-dist \
             --no-interaction \
             --no-progress
@@ -108,6 +149,8 @@ runs:
       working-directory: ${{ steps.plugin_install.outputs.path }}
       shell: bash
       run: >-
-        phpunit \
+        ${{ inputs.phpunit_version
+            && 'composer exec -- phpunit'
+            || 'phpunit' }} \
           --configuration='${{ inputs.phpunit_config }}' \
           --log-junit='${{ runner.temp }}/junit-result.xml'
