@@ -137,7 +137,9 @@ runs:
       if: ${{ inputs.phpunit_version }}
       working-directory: ${{ steps.plugin_install.outputs.path }}
       shell: bash
-      run: >-
+      run: |-
+        echo '::group::Install PHPUnit'
+
         composer exec -- phpunit --version \
           || composer global require \
             'phpunit/phpunit:${{ inputs.phpunit_version }}' \
@@ -145,12 +147,18 @@ runs:
             --no-interaction \
             --no-progress
 
+        echo '::endgroup::'
+
     - name: Run the tests
       working-directory: ${{ steps.plugin_install.outputs.path }}
       shell: bash
-      run: >-
+      run: |-
+        echo '::group::Run the tests'
+
         ${{ inputs.phpunit_version
             && 'composer exec -- phpunit'
             || 'phpunit' }} \
           --configuration='${{ inputs.phpunit_config }}' \
           --log-junit='${{ runner.temp }}/junit-result.xml'
+
+        echo '::endgroup::'
