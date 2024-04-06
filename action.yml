@@ -55,7 +55,7 @@ runs:
   steps:
     - name: Install WordPress
       id: wordpress
-      uses: holyhope/install-wordpress-github-action@main
+      uses: holyhope/install-wordpress-github-action@v2.2.1
       with:
         wordpress_version: ${{ inputs.wordpress_version }}
         php_version: ${{ inputs.php_version }}
