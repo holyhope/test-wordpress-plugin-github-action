@@ -24,7 +24,11 @@ Test a WordPress plugin using PHPUnit.
 
 <!-- start contents -->
 
-This action tests a WordPress plugin in a environment that is similar to a real WordPress site. It installs WordPress, activates the plugin, and runs the tests.
+This action tests a WordPress plugin in a environment that is similar to a real WordPress site. It installs WordPress, activates the plugin, and runs the tests. Read more about the [WordPress plugin integration test](https://make.wordpress.org/cli/handbook/plugin-unit-tests/).
+
+The action installs the specified PHP version and extensions, installs WordPress, installs development dependencies, and runs PHPUnit tests.
+
+WordPress plugin integration tests usually require [PHPUnit-Polyfills](https://github.com/Yoast/PHPUnit-Polyfills) to run, so you probably want to specify the version of PHPUnit-Polyfills to install in your `composer.json` file.
 
 <!-- end contents -->
 
@@ -45,7 +49,7 @@ This action tests a WordPress plugin in a environment that is similar to a real 
     # Default: 8.2
     php_version: ""
 
-    # Description: PHP version
+    # Description: PHP extensions to install. Each extension should be on a new line.
     #
     # Default: imagick
     php_extensions: ""
@@ -55,14 +59,28 @@ This action tests a WordPress plugin in a environment that is similar to a real 
     # Default: .
     plugin_dir: ""
 
-    # Description: Plugin slug
+    # Description: Slug of the WordPress plugin
     #
     plugin_slug: ""
+
+    # Description: PHPUnit version to install.
+    #
+    # Set to `false` to use the system-wide PHPUnit binary.
+    #
+    # Default: Install the version found in `composer.json` file or `^9` if not found.
+    #
+    # Default: ^9
+    phpunit_version: ""
 
     # Description: PHPUnit configuration file
     #
     # Default: phpunit.xml
     phpunit_config: ""
+
+    # Description: Generates files needed for running PHPUnit tests in a plugin.
+    #
+    # Default: true
+    scaffold_tests: ""
 ```
 
 <!-- end usage -->
@@ -71,14 +89,16 @@ This action tests a WordPress plugin in a environment that is similar to a real 
 
 <!-- start inputs -->
 
-| **<b>Input</b>**                      | **<b>Description</b>**       | **<b>Default</b>**       | **<b>Required</b>** |
-| ------------------------------------- | ---------------------------- | ------------------------ | ------------------- |
-| <b><code>wordpress_version</code></b> | WordPress version            | <code>latest</code>      | **false**           |
-| <b><code>php_version</code></b>       | PHP version                  | <code>8.2</code>         | **false**           |
-| <b><code>php_extensions</code></b>    | PHP version                  | <code>imagick</code>     | **false**           |
-| <b><code>plugin_dir</code></b>        | Path to the WordPress plugin | <code>.</code>           | **false**           |
-| <b><code>plugin_slug</code></b>       | Plugin slug                  |                          | **true**            |
-| <b><code>phpunit_config</code></b>    | PHPUnit configuration file   | <code>phpunit.xml</code> | **false**           |
+| **<b>Input</b>**                      | **<b>Description</b>**                                                  | **<b>Default</b>**       | **<b>Required</b>** |
+| ------------------------------------- | ----------------------------------------------------------------------- | ------------------------ | ------------------- |
+| <b><code>wordpress_version</code></b> | WordPress version                                                       | <code>latest</code>      | **false**           |
+| <b><code>php_version</code></b>       | PHP version                                                             | <code>8.2</code>         | **false**           |
+| <b><code>php_extensions</code></b>    | PHP extensions to install.<br />Each extension should be on a new line. | <code>imagick</code>     | **false**           |
+| <b><code>plugin_dir</code></b>        | Path to the WordPress plugin                                            | <code>.</code>           | **false**           |
+| <b><code>plugin_slug</code></b>       | Slug of the WordPress plugin                                            |                          | **true**            |
+| <b><code>phpunit_version</code></b>   | PHPUnit version to install.                                             | <code>^9</code>          | **false**           |
+| <b><code>phpunit_config</code></b>    | PHPUnit configuration file                                              | <code>phpunit.xml</code> | **false**           |
+| <b><code>scaffold_tests</code></b>    | Generates files needed for running PHPUnit tests in a plugin.           | <code>true</code>        | **false**           |
 
 <!-- end inputs -->
 <!-- start outputs -->
