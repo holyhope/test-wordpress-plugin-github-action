@@ -1,5 +1,9 @@
-name: test-wordpress-plugin
-description: Test a WordPress plugin
+name: WordPress Plugin Integration Test
+description: Test a WordPress plugin using PHPUnit.
+author: holyhope
+branding:
+  icon: check-circle
+  color: blue
 inputs:
   wordpress_version:
     description: WordPress version
