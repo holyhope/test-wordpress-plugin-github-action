@@ -92,6 +92,11 @@ runs:
       run: |-
         echo '::group::Install WordPress tests'
 
+        which svn \
+          || apt-get update \
+          && apt-get install -y \
+            subversion
+
         ./bin/install-wp-tests.sh \
           '${{ steps.wordpress.outputs.db_name }}' \
           '${{ steps.wordpress.outputs.db_user }}' \
