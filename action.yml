@@ -102,7 +102,7 @@ runs:
           '${{ steps.wordpress.outputs.db_user }}' \
           '${{ steps.wordpress.outputs.db_pass }}' \
           '${{ steps.wordpress.outputs.db_host }}' \
-          latest true
+          '${{ steps.wordpress.outputs.version }}' true
 
         echo '::endgroup::'
       env:
